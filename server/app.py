@@ -9,7 +9,7 @@ from models import db, User, Meal, Order, Caterer
 app = Flask(__name__)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app)
+migrate = Migrate(app, db)
 CORS(app, supports_credentials=True)
 
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=5)
@@ -31,9 +31,9 @@ with app.app_context():
 def index():
     return "Welcome to Mealy!"
 
-# Register
-@app.route('/register', methods=['POST'])
-def register():
+# Sign up
+@app.route('/signup', methods=['POST'])
+def signup():
     data = request.json
     username = request.json['username']
     email = request.json['email']
@@ -263,5 +263,5 @@ def logout():
     unset_jwt_cookies(response)
     return response
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     app.run(debug=True, port=5555)
