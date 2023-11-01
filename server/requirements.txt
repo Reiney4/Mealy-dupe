@@ -20,6 +20,7 @@ Flask-Migrate
 Flask-RESTful
 Flask-SQLAlchemy==3.0.2
 Flask-bcrypt
+Flask_jwt_extended
 future
 gevent
 greenlet
