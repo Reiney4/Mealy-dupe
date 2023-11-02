@@ -6,6 +6,7 @@ from flask_jwt_extended import create_access_token, JWTManager, get_jwt, get_jwt
 from flask_cors import CORS
 from models import db, User, Meal, Order, Caterer
 
+
 app = Flask(__name__)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
@@ -15,6 +16,7 @@ CORS(app, supports_credentials=True)
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=5)
 app.config["SECRET_KEY"] = 'OURSECRETKEYISSECRET'
 app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///mealy.db'
+# app.config["SQLALCHEMY_DATABASE_URI"] = 'postgresql://mealygroup_user:eAgXwkRYlcupPiMTRKCU2AiFRinC8fyX@dpg-cl13ir2s1bgc73e9aen0-a.oregon-postgres.render.com/mealygroup'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
 
@@ -171,6 +173,24 @@ def get_all_caterers():
 
     return jsonify(caterers_info)
 
+
+@app.route('/caterers/<int:caterer_id>', methods=['GET'])
+def get_caterer_by_id(caterer_id):
+    caterer = Caterer.query.get(caterer_id)
+
+    if caterer is None:
+        return jsonify({'error': 'Caterer not found'}), 404
+
+    caterer_info = {
+        'id': caterer.id,
+        'user_id': caterer.user_id,
+        'name': caterer.name,
+        'created_at': caterer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'updated_at': caterer.updated_at.strftime('%Y-%m-%d %H:%M:%S') if caterer.updated_at else None
+    }
+
+    return jsonify(caterer_info)
+
 # @app.route('/caterer/info', methods=['GET'])
 # @jwt_required()
 # def get_caterer_info():
@@ -249,48 +269,90 @@ def change_password():
 
     return jsonify({"message": "Password changed successfully"}), 200
 
+
+# Admin caterer should be able to add, modify and delete meals
+
 @app.route('/meals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def manage_meal_options():
     if request.method == 'GET':
         meal_options = Meal.query.all()
-        meal_options_list = [meal_option.to_dict() for meal_option in meal_options]
-        return jsonify({"meal options": meal_options_list})
-    
+        meal_options_list = []
+
+        for meal_option in meal_options:
+            meal_option_dict = {
+                'id': meal_option.id,
+                'name': meal_option.name,
+                'description': meal_option.description,
+                'price': meal_option.price,
+                'image_url': meal_option.image_url,
+                'caterer_id': meal_option.caterer_id,
+                # Add other meal attributes you want to include in the response
+            }
+            meal_options_list.append(meal_option_dict)
+
+        return jsonify({"meal_options": meal_options_list})
+
     elif request.method == 'POST':
-        meal_option_name = request.json.get('meal_option')
-        new_meal_option = Meal(name=meal_option_name)
-        db.session.add(new_meal_option)
+        meal_data = request.json
+        meal_name = meal_data.get('name')
+        meal_description = meal_data.get('description')
+        meal_price = meal_data.get('price')
+        meal_image_url = meal_data.get('image_url')
+        caterer_id = meal_data.get('caterer_id')
+
+        if not meal_name or not meal_description or not meal_price or not meal_image_url or not caterer_id:
+            return jsonify({"message": "Missing required fields"}), 400
+
+        new_meal = Meal(
+            name=meal_name,
+            description=meal_description,
+            price=meal_price,
+            image_url=meal_image_url,
+            caterer_id=caterer_id
+        )
+
+        db.session.add(new_meal)
         db.session.commit()
-        return jsonify({"message": "Meal option added successfully"})
+        return jsonify({"message": "Meal added successfully"})
     
     elif request.method == 'PUT':
         meal_option_id = request.json.get('meal_option_id')
-        new_meal_option_name= request.json.get('new_meal_option')
+        new_meal_option_name = request.json.get('new_meal_option')
+        if not meal_option_id or not new_meal_option_name:
+            return jsonify({"message": "Meal option ID and new name are required"}), 400
+
         meal_option = Meal.query.get(meal_option_id)
         if meal_option:
             meal_option.name = new_meal_option_name
             db.session.commit()
             return jsonify({"message": "Meal option updated successfully"})
         else:
-            return jsonify({"message": "Meal option not found"})
-        
+            return jsonify({"message": "Meal option not found"}), 404
+
     elif request.method == 'DELETE':
         meal_option_id = request.json.get('meal_option_id')
+        if not meal_option_id:
+            return jsonify({"message": "Meal option ID is required"}), 400
+
         meal_option = Meal.query.get(meal_option_id)
         if meal_option:
             db.session.delete(meal_option)
             db.session.commit()
             return jsonify({"message": "Meal option deleted successfully"})
         else:
-            return jsonify({"message": "Meal option not found"})
+            return jsonify({"message": "Meal option not found"}), 404
+
+
+
+
     
-@app.route('/menu/<date>', methods=['POST'])
-def set_menu(date):
-    menu_items = request.json.get('menu_items')
-    menu = Meal(date=date, items=menu_items)
-    db.session.add(menu)
-    db.session.commit()
-    return jsonify({"message": f"Menu set successfully for {date}"})
+# @app.route('/menu/<date>', methods=['POST'])
+# def set_menu(date):
+#     menu_items = request.json.get('menu_items')
+#     menu = Meal(date=date, items=menu_items)
+#     db.session.add(menu)
+#     db.session.commit()
+#     return jsonify({"message": f"Menu set successfully for {date}"})
 
 @app.route('/orders', methods=['GET'])
 def view_orders():

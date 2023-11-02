@@ -89,7 +89,7 @@ class Meal(db.Model, SerializerMixin):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Numeric, nullable=False)
-    image_url = db.Column(db.String(255))
+    image_url = db.Column(db.String)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
@@ -158,8 +158,8 @@ class Order(db.Model, SerializerMixin):
             raise ValidationError('Quantity must be at least 1')
         return quantity
 
-    @validates('total_amount')
-    def validate_total_amount(self, key, amount):
-        if amount <= 0:
-            raise ValidationError('Total amount must be positive')
-        return amount
+    # @validates('total_amount')
+    # def validate_total_amount(self, key, amount):
+    #     if amount <= 0:
+    #         raise ValidationError('Total amount must be positive')
+    #     return amount
